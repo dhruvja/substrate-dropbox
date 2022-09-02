@@ -4,10 +4,15 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use frame_support::{sp_runtime::traits::{Hash, Zero},
-                        dispatch::{DispatchResultWithPostInfo, DispatchResult}, 
-                        traits::{Currency, ExistenceRequirement, Randomness},
-                        pallet_prelude::*};
+
+	use frame_support::{
+		dispatch::{DispatchResult, DispatchResultWithPostInfo},
+		pallet_prelude::*,
+		sp_runtime::traits::{Hash, Zero},
+		traits::{Currency, ExistenceRequirement, Randomness},
+		transactional,
+	};
+
     use frame_system::pallet_prelude::*;
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -64,6 +69,15 @@ pub mod pallet {
 	#[pallet::getter(fn get_file_details)]
 	pub(super) type Files<T: Config> = StorageMap<_, Twox64Concat, T::Hash, File<T>>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn get_user_file_details)]
+	// I am trying to map accountid to a vector with hash and file. So i can the file with hash as well
+	pub(super) type FilesPerUser<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<T::Hash, File<T>>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_download_details)]
+	// I am trying to map hash to a vector with account id and file. So i can tell which user downloaded which file
+	pub(super) type FileDownloads<T: Config> = StorageMap<_, Twox64Concat, T::Hash, BoundedVec<T::AccountId,<File<T>>, ValueQuery>;
 
 
     #[pallet::call]
