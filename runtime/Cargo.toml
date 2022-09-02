@@ -15,6 +15,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+hex-literal = { version = "0.3.4", optional = true }
 
 pallet-aura = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
@@ -46,7 +47,6 @@ pallet-transaction-payment-rpc-runtime-api = { version = "4.0.0-dev", default-fe
 # Used for runtime benchmarking
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26", optional = true }
 frame-system-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26", optional = true }
-hex-literal = { version = "0.3.4", optional = true }
 
 # Local dependencies
 pallet-mydropbox = { version = "4.0.0-dev", default-features = false, path = "../pallets/mydropbox" }
@@ -83,6 +83,7 @@ std = [
 	"sp-std/std",
 	"sp-transaction-pool/std",
 	"sp-version/std",
+	"hex-literal",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",

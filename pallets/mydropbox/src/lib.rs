@@ -49,8 +49,6 @@ pub mod pallet {
 
 		type Currency: Currency<Self::AccountId>;
 
-		type FileIdRandomness: Randomness<Self::Hash, Self::BlockNumber>;
-
 		#[pallet::constant]
 		type MaxFilesUploaded: Get<u32>;
 
@@ -59,6 +57,9 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type FileSizeLimit: Get<u64>;
+
+		// #[pallet::constant]
+		// type Accountant: Get<Self::AccountId>;
 
     }
 
@@ -71,13 +72,21 @@ pub mod pallet {
 		ExceedMaxFileDownload,
 		InvalidOperation,
 		FileCountOverflow,
-		FileDownloadCountOverflow
+		FileDownloadCountOverflow,
+		InvalidSigner,
+		NotEnoughBalance,
+		AccountantNotSet,
+		FileDoesntExist
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
     }
+
+	#[pallet::storage]
+	#[pallet::getter(fn accountant)]
+	pub(super) type Accountant<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn all_files_count)]
@@ -105,6 +114,19 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
 		// Upload
+		
+		#[pallet::weight(100)]
+		pub fn add_accountant(origin: OriginFor<T>) -> DispatchResult {
+
+			let signer = ensure_signed(origin)?;
+
+			ensure!(Self::accountant().is_none(), <Error<T>>::InvalidSigner);
+
+			<Accountant<T>>::put(signer);
+
+			Ok(())
+		}
+
 		#[pallet::weight(100)]
 		pub fn upload_file(origin: OriginFor<T>, file_link: [u8; 50], allow_download: bool, file_type: FileType, cost: u64, file_size: u64) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -162,18 +184,27 @@ pub mod pallet {
 						let total_cost_in_balance = total_cost.saturated_into::<BalanceOf<T>>(); 
 
 						// Transfer the amount to Dave
+						ensure!(T::Currency::free_balance(&signer) >= total_cost_in_balance, <Error<T>>::NotEnoughBalance);
+						let accountant = Self::accountant().ok_or_else(|| <Error<T>>::AccountantNotSet)?;
+						T::Currency::transfer(&signer, &accountant, total_cost_in_balance, ExistenceRequirement::KeepAlive)?;
 
 					}
 					else {
 						let cost_in_balance = file.cost.saturated_into::<BalanceOf<T>>();
 						
 						// Transfer the amount to Dave
+						ensure!(T::Currency::free_balance(&signer) >= cost_in_balance, <Error<T>>::NotEnoughBalance);
+						let accountant = Self::accountant().ok_or_else(|| <Error<T>>::AccountantNotSet)?;
+						T::Currency::transfer(&signer, &accountant, cost_in_balance, ExistenceRequirement::KeepAlive)?;
 					}
 				},
 				FileType::Privileged => {
 					let cost_in_balance = file.cost.saturated_into::<BalanceOf<T>>();
 					
 					// Transfer the amount to Dave
+					ensure!(T::Currency::free_balance(&signer) >= cost_in_balance, <Error<T>>::NotEnoughBalance);
+					let accountant = Self::accountant().ok_or_else(|| <Error<T>>::AccountantNotSet)?;
+					T::Currency::transfer(&signer, &accountant, cost_in_balance, ExistenceRequirement::KeepAlive)?;
 				}
 			}
 
@@ -188,6 +219,32 @@ pub mod pallet {
 		}
 
 		// Transfer
+		#[pallet::weight(100)]
+		pub fn transfer_file(origin: OriginFor<T>, file_id: T::Hash, new_owner: T::AccountId) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+			
+			let file = &mut <Files<T>>::get(&file_id).ok_or(<Error<T>>::FileNotFound)?;
+
+			ensure!(file.owner == owner, <Error<T>>::InvalidSigner);
+
+			file.owner = new_owner.clone();
+
+			<FilesPerUser<T>>::try_mutate(&owner, |owned| {
+				if let Some(ind) = owned.iter().position(|&id| id == file_id) {
+					owned.swap_remove(ind);
+					return Ok(())
+				}
+				Err(())
+			})
+			.map_err(|_| <Error<T>>::FileDoesntExist)?;
+
+			<Files<T>>::insert(file_id, file);
+			<FilesPerUser<T>>::try_mutate(&new_owner, |file_vec| file_vec.try_push(file_id))
+			.map_err(|_| <Error<T>>::ExceedMaxFileUploaded)?;	
+
+
+			Ok(())
+		}
     }
 
 

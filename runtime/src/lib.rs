@@ -22,6 +22,7 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
+// use hex_literal;
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -142,6 +143,8 @@ parameter_types! {
 	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub const SS58Prefix: u8 = 42;
+	// pub const Dave: AccountId = hex_literal::hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
+	
 }
 
 // Configure FRAME pallets to include in runtime.
@@ -266,10 +269,10 @@ impl pallet_sudo::Config for Runtime {
 impl pallet_mydropbox::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type FileIdRandomness = RandomnessCollectiveFlip;
 	type MaxFilesUploaded = frame_support::pallet_prelude::ConstU32<100>;
 	type CostPerByte = ConstU64<50>;
 	type FileSizeLimit = ConstU64<250>;
+	// type Accountant = Dave;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
