@@ -82,6 +82,9 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
+		Uploaded(T::AccountId, T::Hash),
+		Downloaded(T::AccountId, T::Hash, BalanceOf<T>),
+		Transfered(T::AccountId, T::AccountId, T::Hash),
     }
 
 	#[pallet::storage]
@@ -157,6 +160,8 @@ pub mod pallet {
 			<Files<T>>::insert(file_id, file);
 			<AllFilesCount<T>>::put(new_count);
 
+			Self::deposit_event(Event::Uploaded(sender, file_id));
+
 			Ok(())
 		}
 
@@ -195,6 +200,7 @@ pub mod pallet {
 						ensure!(T::Currency::free_balance(&signer) >= total_cost_in_balance, <Error<T>>::NotEnoughBalance);
 						let accountant = Self::accountant().ok_or_else(|| <Error<T>>::AccountantNotSet)?;
 						T::Currency::transfer(&signer, &accountant, total_cost_in_balance, ExistenceRequirement::KeepAlive)?;
+						Self::deposit_event(Event::Downloaded(signer.clone(), file_id, total_cost_in_balance));
 
 					}
 					else {
@@ -204,6 +210,7 @@ pub mod pallet {
 						ensure!(T::Currency::free_balance(&signer) >= cost_in_balance, <Error<T>>::NotEnoughBalance);
 						let accountant = Self::accountant().ok_or_else(|| <Error<T>>::AccountantNotSet)?;
 						T::Currency::transfer(&signer, &accountant, cost_in_balance, ExistenceRequirement::KeepAlive)?;
+						Self::deposit_event(Event::Downloaded(signer.clone(), file_id, cost_in_balance));
 					}
 				},
 				FileType::Privileged => {
@@ -213,6 +220,7 @@ pub mod pallet {
 					ensure!(T::Currency::free_balance(&signer) >= cost_in_balance, <Error<T>>::NotEnoughBalance);
 					let accountant = Self::accountant().ok_or_else(|| <Error<T>>::AccountantNotSet)?;
 					T::Currency::transfer(&signer, &accountant, cost_in_balance, ExistenceRequirement::KeepAlive)?;
+					Self::deposit_event(Event::Downloaded(signer.clone(), file_id, cost_in_balance));
 				}
 			}
 
@@ -251,6 +259,7 @@ pub mod pallet {
 			.map_err(|_| <Error<T>>::ExceedMaxFileUploaded)?;	
 
 
+			Self::deposit_event(Event::Transfered(owner,new_owner, file_id));
 			Ok(())
 		}
     }
