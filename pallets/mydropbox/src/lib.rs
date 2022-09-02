@@ -120,9 +120,17 @@ pub mod pallet {
 
 			let signer = ensure_signed(origin)?;
 
-			ensure!(Self::accountant().is_none(), <Error<T>>::InvalidSigner);
+			let account = Self::accountant();
 
-			<Accountant<T>>::put(signer);
+			match account {
+				Some(acc) => {
+					ensure!(acc == signer, <Error<T>>::InvalidSigner);
+				},
+				None => {
+					<Accountant<T>>::put(signer);
+				}
+			}
+
 
 			Ok(())
 		}
