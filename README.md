@@ -5,10 +5,7 @@ I have built a pallet which does the following things.
 - Download: Users can download the file by providing the file id by paying the cost mentioned upto 250MB above which it costs extra for each byte. For privileged users, they dont have to pay extra if the file size if more.
 - Transfer: The file owner can transfer the ownership of the file to anybody else given that the owner signs the transaction.
 
-
-[![Try on playground](https://img.shields.io/badge/Playground-Node_Template-brightgreen?logo=Parity%20Substrate)](https://docs.substrate.io/playground/) [![Matrix](https://img.shields.io/matrix/substrate-technical:matrix.org)](https://matrix.to/#/#substrate-technical:matrix.org)
-
-A fresh FRAME-based [Substrate](https://www.substrate.io/) node, ready for hacking :rocket:
+The below are the instruction to get started and run this project.
 
 ## Getting Started
 
