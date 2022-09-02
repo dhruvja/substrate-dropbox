@@ -31,7 +31,7 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	#[codec(mel_bound())]
 	pub struct File<T: Config> {
-		pub file_link: [u8; 50],
+		pub file_link: [u8; 20],
 		pub allow_download: bool,
 		pub file_type: FileType,
 		pub cost: u64,
@@ -136,7 +136,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
-		pub fn upload_file(origin: OriginFor<T>, file_link: [u8; 50], allow_download: bool, file_type: FileType, cost: u64, file_size: u64) -> DispatchResult {
+		pub fn upload_file(origin: OriginFor<T>, file_link: [u8; 20], allow_download: bool, file_type: FileType, cost: u64, file_size: u64) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			let file = File::<T> {
@@ -168,7 +168,7 @@ pub mod pallet {
 
 			let file = Self::get_file_details(&file_id).ok_or(<Error<T>>::FileNotFound)?;
 
-			ensure!(!file.allow_download, <Error<T>>::FileNotAllowedToDownload);
+			ensure!(file.allow_download, <Error<T>>::FileNotAllowedToDownload);
 
 			let downloads = <FileDownloads<T>>::get(&file_id);
 
