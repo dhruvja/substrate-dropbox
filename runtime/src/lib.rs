@@ -266,6 +266,8 @@ impl pallet_sudo::Config for Runtime {
 impl pallet_mydropbox::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type FileIdRandomness = RandomnessCollectiveFlip;
+	type MaxFilesUploaded = frame_support::pallet_prelude::ConstU32<100>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

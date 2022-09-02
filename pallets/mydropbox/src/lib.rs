@@ -12,6 +12,7 @@ pub mod pallet {
 		traits::{Currency, ExistenceRequirement, Randomness},
 		transactional,
 	};
+	use scale_info::prelude::string::String;
 
     use frame_system::pallet_prelude::*;
 
@@ -47,17 +48,21 @@ pub mod pallet {
 
 		type Currency: Currency<Self::AccountId>;
 
+		type FileIdRandomness: Randomness<Self::Hash, Self::BlockNumber>;
+
+		#[pallet::constant]
+		type MaxFilesUploaded: Get<u32>;
+
     }
 
     #[pallet::error]
     pub enum Error<T> {
-
+		ExceedMaxFileUploaded
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        // TODO Part III
     }
 
 	#[pallet::storage]
@@ -72,17 +77,39 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_user_file_details)]
 	// I am trying to map accountid to a vector with hash and file. So i can the file with hash as well
-	pub(super) type FilesPerUser<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<T::Hash, File<T>>, ValueQuery>;
+	pub(super) type FilesPerUser<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<T::Hash, T::MaxFilesUploaded>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_download_details)]
 	// I am trying to map hash to a vector with account id and file. So i can tell which user downloaded which file
-	pub(super) type FileDownloads<T: Config> = StorageMap<_, Twox64Concat, T::Hash, BoundedVec<T::AccountId,<File<T>>, ValueQuery>;
+	pub(super) type FileDownloads<T: Config> = StorageMap<_, Twox64Concat, T::Hash, BoundedVec<T::AccountId,T::MaxFilesUploaded>, ValueQuery>;
 
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
 		// Upload
+		#[pallet::weight(100)]
+		pub fn upload_file(origin: OriginFor<T>, file_link: [u8; 50], allow_download: bool, file_type: FileType, cost: Option<BalanceOf<T>>, file_size: u64) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			let file = File::<T> {
+				file_link: file_link,
+				allow_download,
+				file_type,
+				cost,
+				file_size,
+				owner: sender.clone()
+			};
+
+			let file_id = T::Hashing::hash_of(&file);
+
+			<FilesPerUser<T>>::try_mutate(&sender, |file_vec| file_vec.try_push(file_id))
+			.map_err(|_| <Error<T>>::ExceedMaxFileUploaded)?;
+
+			<Files<T>>::insert(file_id, file);
+
+			Ok(())
+		}
 
 		// Download
 
