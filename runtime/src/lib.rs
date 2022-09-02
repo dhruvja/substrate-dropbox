@@ -268,6 +268,8 @@ impl pallet_mydropbox::Config for Runtime {
 	type Currency = Balances;
 	type FileIdRandomness = RandomnessCollectiveFlip;
 	type MaxFilesUploaded = frame_support::pallet_prelude::ConstU32<100>;
+	type CostPerByte = ConstU64<50>;
+	type FileSizeLimit = ConstU64<250>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

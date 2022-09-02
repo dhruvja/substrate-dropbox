@@ -8,7 +8,7 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::{DispatchResult, DispatchResultWithPostInfo},
 		pallet_prelude::*,
-		sp_runtime::traits::{Hash, Zero},
+		sp_runtime::{traits::{Hash, Zero}, SaturatedConversion},
 		traits::{Currency, ExistenceRequirement, Randomness},
 		transactional,
 	};
@@ -20,10 +20,11 @@ pub mod pallet {
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum FileType {
 		Normal,
-		Privilege,
+		Privileged,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -33,7 +34,7 @@ pub mod pallet {
 		pub file_link: [u8; 50],
 		pub allow_download: bool,
 		pub file_type: FileType,
-		pub cost: Option<BalanceOf<T>>,
+		pub cost: u64,
 		pub file_size: u64,
 		pub owner: AccountOf<T>,
 	}
@@ -53,11 +54,24 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxFilesUploaded: Get<u32>;
 
+		#[pallet::constant]
+		type CostPerByte: Get<u64>;
+
+		#[pallet::constant]
+		type FileSizeLimit: Get<u64>;
+
     }
 
     #[pallet::error]
     pub enum Error<T> {
-		ExceedMaxFileUploaded
+		ExceedMaxFileUploaded,
+		FileNotAllowedToDownload,
+		FileNotFound,
+		AlreadyDownloaded,
+		ExceedMaxFileDownload,
+		InvalidOperation,
+		FileCountOverflow,
+		FileDownloadCountOverflow
     }
 
     #[pallet::event]
@@ -69,6 +83,9 @@ pub mod pallet {
 	#[pallet::getter(fn all_files_count)]
 	pub(super) type AllFilesCount<T: Config> = StorageValue<_, u64, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn all_downloads_count)]
+	pub(super) type AllDownloadsCount<T: Config> = StorageValue<_, u64, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_file_details)]
@@ -89,11 +106,11 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
 		// Upload
 		#[pallet::weight(100)]
-		pub fn upload_file(origin: OriginFor<T>, file_link: [u8; 50], allow_download: bool, file_type: FileType, cost: Option<BalanceOf<T>>, file_size: u64) -> DispatchResult {
+		pub fn upload_file(origin: OriginFor<T>, file_link: [u8; 50], allow_download: bool, file_type: FileType, cost: u64, file_size: u64) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			let file = File::<T> {
-				file_link: file_link,
+				file_link,
 				allow_download,
 				file_type,
 				cost,
@@ -102,16 +119,73 @@ pub mod pallet {
 			};
 
 			let file_id = T::Hashing::hash_of(&file);
+			let new_count = Self::all_files_count().checked_add(1).ok_or(<Error<T>>::FileCountOverflow)?;
 
 			<FilesPerUser<T>>::try_mutate(&sender, |file_vec| file_vec.try_push(file_id))
 			.map_err(|_| <Error<T>>::ExceedMaxFileUploaded)?;
 
 			<Files<T>>::insert(file_id, file);
+			<AllFilesCount<T>>::put(new_count);
 
 			Ok(())
 		}
 
-		// Download
+		// Download 
+		#[pallet::weight(100)]
+		pub fn download_file(origin: OriginFor<T>, file_id: T::Hash) -> DispatchResult {
+
+			let signer = ensure_signed(origin)?;
+
+			let file = Self::get_file_details(&file_id).ok_or(<Error<T>>::FileNotFound)?;
+
+			ensure!(!file.allow_download, <Error<T>>::FileNotAllowedToDownload);
+
+			let downloads = <FileDownloads<T>>::get(&file_id);
+
+			let download_index = downloads.binary_search(&signer);
+
+			match download_index {
+				Ok(_) => {
+					 Err(<Error<T>>::AlreadyDownloaded)?
+				},
+				Err(_) => {
+					
+				},
+			}
+
+			match file.file_type {
+				FileType::Normal => {
+					if file.file_size > 250 {
+						let size_difference = file.file_size.checked_sub(T::FileSizeLimit::get()).ok_or_else(|| <Error<T>>::InvalidOperation)?;
+						let extra_cost = size_difference.checked_mul(T::CostPerByte::get()).ok_or_else(|| <Error<T>>::InvalidOperation)?;
+						let total_cost = extra_cost.checked_add(file.cost).ok_or_else(|| <Error<T>>::InvalidOperation)?;
+						let total_cost_in_balance = total_cost.saturated_into::<BalanceOf<T>>(); 
+
+						// Transfer the amount to Dave
+
+					}
+					else {
+						let cost_in_balance = file.cost.saturated_into::<BalanceOf<T>>();
+						
+						// Transfer the amount to Dave
+					}
+				},
+				FileType::Privileged => {
+					let cost_in_balance = file.cost.saturated_into::<BalanceOf<T>>();
+					
+					// Transfer the amount to Dave
+				}
+			}
+
+			let downloads_count = Self::all_downloads_count().checked_add(1).ok_or(<Error<T>>::FileDownloadCountOverflow)?;
+
+			<FileDownloads<T>>::try_mutate(&file_id, |download_vec| download_vec.try_push(signer))
+			.map_err(|_| <Error<T>>::ExceedMaxFileDownload)?;
+
+			<AllDownloadsCount<T>>::put(downloads_count);
+
+			Ok(())
+		}
 
 		// Transfer
     }
