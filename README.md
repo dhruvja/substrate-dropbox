@@ -1,9 +1,11 @@
 # Dropbox Clone
 
 I have built a pallet which does the following things.
-- Upload: Users can upload files by providing the file url, cost of download, file size and permission to download
+- Upload: Users can upload files by providing the file url, cost of download, file size and permission to download.
 - Download: Users can download the file by providing the file id by paying the cost mentioned upto 250MB above which it costs extra for each byte. For privileged users, they dont have to pay extra if the file size if more.
-- Transfer: The file owner can transfer the ownership of the file to anybody else given that the owner signs the transaction.
+- Transfer: The file owner can transfer the ownership of the file to anybody else given that the owner signs the transaction. 
+
+I have fixed the cost per byte and maximum file which a user can upload.
 
 The below are the instruction to get started and run this project.
 
